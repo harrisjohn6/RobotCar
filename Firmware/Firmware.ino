@@ -62,7 +62,7 @@ char btCommand;
 
 long time0;
 // Speed range between 0 and 255
-int spdMin = 0;
+int spdMin = 100;
 int spdMax = 255;
 int spd;
 int spdIncValue = 5;
@@ -71,7 +71,6 @@ void setup()
 {
   Serial.begin(9600);
   btSensor.begin(9600);
-  spd = 100;
 }
 
 // Main logic of your circuit. It defines the interaction between the components you selected. After setup, it runs over and over again, in an eternal loop.
@@ -91,17 +90,13 @@ void loop()
 void btAction(char sentCommand, long frontFreeDistance, long rearFreeDistance) {
 
   bool stopSignal = btStopReceived(sentCommand);
-  spd = getSpeed(sentCommand);
+  spd = getSpeed();
 
   if (stopSignal)
   {
     motorDriver.stopMotors();
   } else {
     if (sentCommand == btIntUp && frontFreeDistance >= 50) {
-      Serial.print("Current Speed is: ");
-      Serial.println(spd);
-      Serial.print("Current front distance is: ");
-      Serial.println(frontFreeDistance);
       motorDriver.setMotorA(spd, driveForward);
       motorDriver.setMotorB(spd, driveForward);
     }
@@ -116,8 +111,8 @@ void btAction(char sentCommand, long frontFreeDistance, long rearFreeDistance) {
     if (sentCommand == btIntRight) {
       motorDriver.setMotorA(spd, driveForward);
       motorDriver.setMotorB(spd, driveBackward);
-    } else {
-        getSpeed(sentCommand);
+    } else if (sentCommand == btIntTriangle || sentCommand == btIntO) {
+        setSpeed(sentCommand);
     }
   }
 }
@@ -136,16 +131,28 @@ bool btStopReceived(char SentCommand) {
   }
 }
 
-int getSpeed(char spdChangeDirection) {
-  if (spdChangeDirection == btIntTriangle) {
-    Serial.println("Speed has been increased: ");
-    spd += spdIncValue;
-    return min(spd, spdMax);
-  } else if (spdChangeDirection == btIntO) {
-    Serial.println("Speed has been decreased: ");
-    spd -= spdIncValue;
-    return max(spd, spdMin);
-  } else {
-    return spd;
-  }
+void setSpeed(char spdChangeDirection) {
+
+switch (spdChangeDirection)
+{
+case btIntTriangle:
+  spd += spdIncValue; 
+  break;
+case btIntO:
+spd -= spdIncValue;
+break;
+default:
+spd = spd;
+  break;
+}
+}
+
+int getSpeed() {
+  if (spd > spdMax) {
+    return spdMax;
+  } else if (spd < spdMin     ) {
+    return spdMin; }
+    else {
+      return spd;
+    }
 }
