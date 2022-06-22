@@ -65,7 +65,7 @@ long time0;
 int spdMin = 100;
 int spdMax = 255;
 int spd;
-int spdIncValue = 5;
+int spdIncValue = 3;
 
 void setup()
 {
