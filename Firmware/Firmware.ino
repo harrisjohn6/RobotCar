@@ -6,7 +6,6 @@
 #include "NewPing.h"
 #include "math.h"
 
-
 // Pin Definitions
 #define BTHC05_PIN_TXD  10
 #define BTHC05_PIN_RXD  11
@@ -112,7 +111,7 @@ void btAction(char sentCommand, long frontFreeDistance, long rearFreeDistance) {
       motorDriver.setMotorA(spd, driveForward);
       motorDriver.setMotorB(spd, driveBackward);
     } else if (sentCommand == btIntTriangle || sentCommand == btIntO) {
-        setSpeed(sentCommand);
+      setSpeed(sentCommand);
     }
   }
 }
@@ -133,26 +132,27 @@ bool btStopReceived(char SentCommand) {
 
 void setSpeed(char spdChangeDirection) {
 
-switch (spdChangeDirection)
-{
-case btIntTriangle:
-  spd += spdIncValue; 
-  break;
-case btIntO:
-spd -= spdIncValue;
-break;
-default:
-spd = spd;
-  break;
-}
+  switch (spdChangeDirection)
+  {
+    case btIntTriangle:
+      spd += spdIncValue;
+      break;
+    case btIntO:
+      spd -= spdIncValue;
+      break;
+    default:
+      spd = spd;
+      break;
+  }
 }
 
 int getSpeed() {
   if (spd > spdMax) {
     return spdMax;
   } else if (spd < spdMin     ) {
-    return spdMin; }
-    else {
-      return spd;
-    }
+    return spdMin;
+  }
+  else {
+    return spd;
+  }
 }

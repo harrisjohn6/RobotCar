@@ -138,7 +138,7 @@
 #if defined (ARDUINO) && ARDUINO >= 100
 	#include <Arduino.h>
 #else
-	#include <WProgram.h>
+	#include <Arduino.h>>
 	#include <pins_arduino.h>
 #endif
 
