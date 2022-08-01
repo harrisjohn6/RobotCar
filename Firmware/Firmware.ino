@@ -23,17 +23,13 @@
 #define HCSR04_2_PIN_ECHO 12
 #define HCSR04_2_PIN_TRIG 13
 
-
-
-
 // Global variables and defines
 
 // object initialization
-BTHC05 btSensor(BTHC05_PIN_RXD, BTHC05_PIN_TXD);
+BTHC05 bluetooth(BTHC05_PIN_RXD, BTHC05_PIN_TXD);
 DCMDriverL298 motorDriver(DCMOTORDRIVERL298_PIN_ENA, DCMOTORDRIVERL298_PIN_INT1, DCMOTORDRIVERL298_PIN_INT2, DCMOTORDRIVERL298_PIN_ENB, DCMOTORDRIVERL298_PIN_INT3, DCMOTORDRIVERL298_PIN_INT4);
 NewPing frontDistanceSensor(HCSR04_1_PIN_TRIG, HCSR04_1_PIN_ECHO);
 NewPing rearDistanceSensor(HCSR04_2_PIN_TRIG, HCSR04_2_PIN_ECHO);
-
 
 // define vars for testing menu
 const int timeout = 10000;       //define timeout of 10 sec
@@ -55,9 +51,10 @@ const char btStop4 = 'N';
 
 const int driveForward = 1;
 const int driveBackward = 0;
+int frontDistance;
+int rearDistance;
 
 char btCommand;
-
 
 long time0;
 // Speed range between 0 and 255
@@ -69,90 +66,113 @@ int spdIncValue = 3;
 void setup()
 {
   Serial.begin(9600);
-  btSensor.begin(9600);
+  bluetooth.begin(9600);
+  spd = 100;
 }
 
-// Main logic of your circuit. It defines the interaction between the components you selected. After setup, it runs over and over again, in an eternal loop.
 void loop()
 {
-  long frontFreeDistance = frontDistanceSensor.ping_cm();
-  long rearFreeDistance = rearDistanceSensor.ping_cm();
+  getSpeed();
+  getFrontDistance();
+  getRearDistance();
 
-  if (btSensor.available()) {
-    char btCommand = btSensor.read();
-    if (btCommand) {
-      btAction(btCommand, frontFreeDistance, rearFreeDistance);
-    }
-  }
-}
-
-void btAction(char sentCommand, long frontFreeDistance, long rearFreeDistance) {
-
-  bool stopSignal = btStopReceived(sentCommand);
-  spd = getSpeed();
-
-  if (stopSignal)
+  if (Serial.available() > 0)
   {
-    motorDriver.stopMotors();
-  } else {
-    if (sentCommand == btIntUp && frontFreeDistance >= 50) {
-      motorDriver.setMotorA(spd, driveForward);
-      motorDriver.setMotorB(spd, driveForward);
-    }
-    if (sentCommand == btIntDown && rearFreeDistance >= 50) {
-      motorDriver.setMotorA(spd, driveBackward);
-      motorDriver.setMotorB(spd, driveBackward);
-    }
-    if (sentCommand == btIntLeft) {
-      motorDriver.setMotorA(spd, driveBackward);
-      motorDriver.setMotorB(spd, driveForward);
-    }
-    if (sentCommand == btIntRight) {
-      motorDriver.setMotorA(spd, driveForward);
-      motorDriver.setMotorB(spd, driveBackward);
-    } else if (sentCommand == btIntTriangle || sentCommand == btIntO) {
-      setSpeed(sentCommand);
-    }
-  }
-}
+    btCommand = Serial.read();
+    setDistance();
 
-bool btStopReceived(char SentCommand) {
-  if (SentCommand == btStop1) {
-    return true;
-  } else if (SentCommand == btStop2) {
-    return true;
-  } else if (SentCommand == btStop3) {
-    return true;
-  } else if (SentCommand == btStop4) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-void setSpeed(char spdChangeDirection) {
-
-  switch (spdChangeDirection)
-  {
+    switch (btCommand)
+    {
     case btIntTriangle:
-      spd += spdIncValue;
+      setSpeed(btIntTriangle);
       break;
-    case btIntO:
-      spd -= spdIncValue;
+    case btIntX:
+      setSpeed(btIntX);
+      break;
+    case btIntUp:
+      setDistance();
+      if (frontDistance >= 50)
+      {
+      motorDriver.setMotorA(spd, driveForward);
+      motorDriver.setMotorB(spd, driveForward);
+      setDistance();
+      } else {
+        motorDriver.stopMotors();
+      }
+      break;
+    case btIntDown:
+      setDistance();
+      if (rearDistance >= 50)
+      {
+      motorDriver.setMotorA(spd, driveBackward);
+      motorDriver.setMotorB(spd, driveBackward);
+      setDistance();
+      } else {
+        motorDriver.stopMotors();
+      }
+      break;
+    case btIntLeft:
+      motorDriver.setMotorA(spd, driveBackward);
+      motorDriver.setMotorB(spd, driveForward);
+      break;
+    case btIntRight:
+      motorDriver.setMotorA(spd, driveForward);
+      motorDriver.setMotorB(spd, driveBackward);
       break;
     default:
-      spd = spd;
       break;
+    }
+  }
+
+}
+
+void setSpeed(char adjDirection)
+{
+  switch (adjDirection)
+  {
+  case btIntTriangle:
+    spd =+ spdIncValue;
+    break;
+  case btIntX:
+    spd =- spdIncValue;
+    break;
+  default:
+    spd = spd;
+    break;
+  }
+  if (spd < spdMin) {
+    spd = spdMin;
+  }
+  if (spd > spdMax) {
+    spd = spdMax;
   }
 }
 
-int getSpeed() {
-  if (spd > spdMax) {
-    return spdMax;
-  } else if (spd < spdMin     ) {
-    return spdMin;
-  }
-  else {
-    return spd;
-  }
+int getSpeed()
+{
+  return spd;
+  Serial.print("The returned speed is: ");
+  Serial.println(spd);
+}
+
+void setDistance()
+{
+  frontDistanceSensor.ping();
+  frontDistance = frontDistanceSensor.ping_in();
+  rearDistanceSensor.ping();
+  rearDistance = rearDistanceSensor.ping_in();
+}
+
+long getFrontDistance()
+{
+  return frontDistance;
+  Serial.print("Front distance is: ");
+  Serial.println(frontDistance);
+}
+
+long getRearDistance()
+{
+  return rearDistance;
+    Serial.print("Rear distance is: ");
+  Serial.println(rearDistance);
 }
