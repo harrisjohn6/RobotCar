@@ -119,7 +119,11 @@ void loop()
       motorDriver.setMotorA(spd, driveForward);
       motorDriver.setMotorB(spd, driveBackward);
       break;
+    case btIntF1:
+      modeAuto();
+      break;
     default:
+      motorDriver.stopMotors();
       break;
     }
   }
@@ -173,6 +177,11 @@ long getFrontDistance()
 long getRearDistance()
 {
   return rearDistance;
-    Serial.print("Rear distance is: ");
+  Serial.print("Rear distance is: ");
   Serial.println(rearDistance);
 }
+
+void modeAuto()
+{
+} 
+
