@@ -11,37 +11,33 @@
 
 
 // Pin Definitions
-#define BTHC05_PIN_TXD  7
-#define BTHC05_PIN_RXD  6
+#define BTHC05_PIN_TXD 6
+#define BTHC05_PIN_RXD 7
 
-#define DCMOTORDRIVERL298_PIN_ENB  13  
-#define DCMOTORDRIVERL298_PIN_ENA 8   
+#define DCMOTORDRIVERL298_PIN_ENB 8
+#define DCMOTORDRIVERL298_PIN_ENA 13
 
-#define DCMOTORDRIVERL298_PIN_INT1  9
-#define DCMOTORDRIVERL298_PIN_INT2  10
-#define DCMOTORDRIVERL298_PIN_INT3  11
-#define DCMOTORDRIVERL298_PIN_INT4  12
+#define DCMOTORDRIVERL298_PIN_INT1 12
+#define DCMOTORDRIVERL298_PIN_INT2 11
+#define DCMOTORDRIVERL298_PIN_INT3 10
+#define DCMOTORDRIVERL298_PIN_INT4 9
 
 #define HCSR04_1_PIN_ECHO 5
 #define HCSR04_1_PIN_TRIG 4
-#define HCSR04_2_PIN_ECHO 
-#define HCSR04_2_PIN_TRIG 
-
-#define servoMIN 150
-#define servoMAX 600
-
+#define HCSR04_2_PIN_ECHO 3
+#define HCSR04_2_PIN_TRIG 2
 
 // Global variables and defines
 
 // object initialization
-BTHC05 bluetooth(BTHC05_PIN_RXD, BTHC05_PIN_TXD);
+BTHC05 bt(BTHC05_PIN_RXD, BTHC05_PIN_TXD);
 DCMDriverL298 motorDriver(DCMOTORDRIVERL298_PIN_ENA, DCMOTORDRIVERL298_PIN_INT1, DCMOTORDRIVERL298_PIN_INT2, DCMOTORDRIVERL298_PIN_ENB, DCMOTORDRIVERL298_PIN_INT3, DCMOTORDRIVERL298_PIN_INT4);
 NewPing frontDistanceSensor(HCSR04_1_PIN_TRIG, HCSR04_1_PIN_ECHO);
 NewPing rearDistanceSensor(HCSR04_2_PIN_TRIG, HCSR04_2_PIN_ECHO);
 Adafruit_PWMServoDriver PwmDriver = Adafruit_PWMServoDriver();
 
 // define vars for testing menu
-const int timeout = 10000;       //define timeout of 10 sec
+const int timeout = 10000;  //define timeout of 10 sec
 // constant bluetooth signals (gamepad)
 const char btIntLeft = '1';
 const char btIntRight = '2';
@@ -55,13 +51,16 @@ const char btIntF1 = '9';
 const char btCharF2 = 'a';
 const char btStop1 = '0';
 const char btStop2 = 'o';
-const char btStop3 = 'M';
+const char btCharMode = 'M';
 const char btStop4 = 'N';
 
+const int servoRotMIN = 125;
+const int servoRotMAX = 600;
 const int driveForward = 1;
 const int driveBackward = 0;
 int frontDistance;
 int rearDistance;
+boolean driveMode;
 
 char btCommand;
 
@@ -72,132 +71,88 @@ int spdMax = 255;
 int spd;
 int spdIncValue = 3;
 
-byte servo = 0;
-byte svGrapper = 0;
-byte svRotate = 1;
-byte svLift = 2;
+byte svRotate = 0;
+byte svGrapper = 2;
+byte svLift = 1;
 byte svExtend = 3;
 
-void setup()
-{
+void setup() {
   Serial.begin(9600);
-  bluetooth.begin(9600);
-   PwmDriver.begin();
+  bt.begin(9600);
+  PwmDriver.begin();
   PwmDriver.setPWMFreq(60);
-  spd = 100;
+  spd = 255;
 }
 
-void loop()
-{
-  getSpeed();
-  getFrontDistance();
-  getRearDistance();
-
-  if (Serial.available() > 0)
-  {
-    btCommand = Serial.read();
-    setDistance();
-
-    switch (btCommand)
-    {
-      case btIntTriangle:
-        setSpeed(btIntTriangle);
-        break;
-      case btIntX:
-        setSpeed(btIntX);
-        break;
-      case btIntUp:
-        setDistance();
-        if (frontDistance >= 50)
-        {
-          motorDriver.setMotorA(spd, driveForward);
-          motorDriver.setMotorB(spd, driveForward);
-          setDistance();
-        } else {
-          motorDriver.stopMotors();
-        }
-        break;
-      case btIntDown:
-        setDistance();
-        if (rearDistance >= 50)
-        {
-          motorDriver.setMotorA(spd, driveBackward);
-          motorDriver.setMotorB(spd, driveBackward);
-          setDistance();
-        } else {
-          motorDriver.stopMotors();
-        }
-        break;
-      case btIntLeft:
-        motorDriver.setMotorA(spd, driveBackward);
-        motorDriver.setMotorB(spd, driveForward);
-        break;
-      case btIntRight:
-        motorDriver.setMotorA(spd, driveForward);
-        motorDriver.setMotorB(spd, driveBackward);
-        break;
-      case btIntF1:
-        modeAuto();
-        break;
-      default:
-        motorDriver.stopMotors();
-        break;
-    }
+void loop() {
+  if (bt.available()) {
+    btCommand = bt.read();   
+  }
+  
+  if (Serial.available() > 0) {
+    int ang = Serial.readStringUntil('\n').toInt();
+    PwmDriver.setPWM(svRotate, 0, angleToPulse(ang));
+    // drive(btCommand);
   }
 
+  Serial.println(btCommand);
+
+ }
+
+int angleToPulse(int ang) {
+  int pulse = map(ang, 1, 179, servoRotMIN, servoRotMAX);  // map angle of 0 to 180 to Servo min and Servo max
+  Serial.print("Angle: ");
+  Serial.print(ang);
+  Serial.print(" pulse: ");
+  Serial.println(pulse);
+  return pulse;
 }
 
-void setSpeed(char adjDirection)
-{
-  switch (adjDirection)
-  {
-    case btIntTriangle:
-      spd = + spdIncValue;
+void drive(char direction) {
+  Serial.println("Entered Drive Mode");
+  switch (direction) {
+    case btIntUp:
+      motorDriver.setMotorA(spd, driveForward);
+      motorDriver.setMotorB(spd, driveForward);
       break;
-    case btIntX:
-      spd = - spdIncValue;
+    case btIntDown:
+      motorDriver.setMotorA(spd, driveBackward);
+      motorDriver.setMotorB(spd, driveBackward);
       break;
+    case btIntLeft:
+      motorDriver.setMotorA(spd, driveBackward);
+      motorDriver.setMotorB(spd, driveForward);
+      break;
+    case btIntRight:
+      motorDriver.setMotorA(spd, driveForward);
+      motorDriver.setMotorB(spd, driveBackward);
+      break;
+    case btCharMode:
+      driveMode = btCharMode;
+      Serial.println("Left Drive Mode: ");
+      break;
+      case btStop2:
+      driveMode = btCharMode;
+      motorDriver.stopMotorA();
+      motorDriver.stopMotorB();
+      break;
+
     default:
-      spd = spd;
       break;
   }
-  if (spd < spdMin) {
-    spd = spdMin;
+}
+
+void robotArm(char mv) {
+  int angInc = 1;
+  int ang = 90;
+
+  switch (mv) {
+    case btIntUp /* constant-expression */:
+      ang = ang + angInc;
+      PwmDriver.setPWM(svLift, 0, angleToPulse(ang));
+      break;
+
+    default:
+      break;
   }
-  if (spd > spdMax) {
-    spd = spdMax;
-  }
-}
-
-int getSpeed()
-{
-  return spd;
-  Serial.print("The returned speed is: ");
-  Serial.println(spd);
-}
-
-void setDistance()
-{
-  frontDistanceSensor.ping();
-  frontDistance = frontDistanceSensor.ping_in();
-  rearDistanceSensor.ping();
-  rearDistance = rearDistanceSensor.ping_in();
-}
-
-long getFrontDistance()
-{
-  return frontDistance;
-  Serial.print("Front distance is: ");
-  Serial.println(frontDistance);
-}
-
-long getRearDistance()
-{
-  return rearDistance;
-  Serial.print("Rear distance is: ");
-  Serial.println(rearDistance);
-}
-
-void modeAuto()
-{
 }

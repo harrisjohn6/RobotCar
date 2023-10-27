@@ -1,6 +1,7 @@
 {
-  "board": "arduino:avr:uno",
-  "programmer": "arduino:arduinoisp",
-  "output": "../ArduinoOutput",
-  "sketch": "Firmware\\Firmware.ino"
+    "board": "arduino:avr:uno",
+    "programmer": "arduino:arduinoisp",
+    "output": "../ArduinoOutput",
+    "sketch": "Firmware\\Firmware.ino",
+    "port": "COM3"
 }
